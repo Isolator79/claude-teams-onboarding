@@ -160,6 +160,8 @@ def access_token():
 
 
 def api(method, path, body=None):
+    # mezery v URL (napr. $orderby=... desc) musi byt zakodovane
+    path = path.replace(" ", "%20")
     return _http(method, GRAPH + path, body,
                  headers={"Authorization": "Bearer " + access_token()})
 
