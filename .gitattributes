@@ -1,0 +1,13 @@
+# Line-endings drzime per typ souboru, aby se skripty nerozbily.
+# Unixove skripty MUSI mit LF, Windows .cmd MUSI mit CRLF.
+
+*.sh        text eol=lf
+*.command   text eol=lf
+*.bash      text eol=lf
+*.py        text eol=lf
+*.md        text eol=lf
+
+# Windows davky nenormalizovat - drzime presne tak, jak jsou ulozene (CRLF).
+*.cmd       -text
+*.bat       -text
+*.ps1       -text
