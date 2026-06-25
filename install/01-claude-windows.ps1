@@ -24,7 +24,10 @@ function Update-PathInSession {
     $env:Path = "$machine;$user;$local"
 }
 
-function Enable-Yolo {
+# RemoteControl (remoteControlAtStartup) zapiname VZDY = ovladani z aplikace
+# Claude v kazde session, bez ptani. YOLO (bypassPermissions) jen na vyber.
+function Seed-Settings {
+    param([bool]$Yolo)
     $p = Join-Path $env:USERPROFILE '.claude\settings.json'
     $d = Split-Path $p
     if (-not (Test-Path $d)) { New-Item -ItemType Directory -Path $d -Force | Out-Null }
@@ -32,11 +35,18 @@ function Enable-Yolo {
         $c = Get-Content $p -Raw
         if ($c) { $c | ConvertFrom-Json } else { [PSCustomObject]@{} }
     } else { [PSCustomObject]@{} }
-    if (-not $j.permissions) { $j | Add-Member -NotePropertyName permissions -NotePropertyValue ([PSCustomObject]@{}) -Force }
-    $j.permissions | Add-Member -NotePropertyName defaultMode -NotePropertyValue 'bypassPermissions' -Force
-    $j | Add-Member -NotePropertyName skipDangerousModePermissionPrompt -NotePropertyValue $true -Force
+    $j | Add-Member -NotePropertyName remoteControlAtStartup -NotePropertyValue $true -Force
+    if ($Yolo) {
+        if (-not $j.permissions) { $j | Add-Member -NotePropertyName permissions -NotePropertyValue ([PSCustomObject]@{}) -Force }
+        $j.permissions | Add-Member -NotePropertyName defaultMode -NotePropertyValue 'bypassPermissions' -Force
+        $j | Add-Member -NotePropertyName skipDangerousModePermissionPrompt -NotePropertyValue $true -Force
+    }
     $j | ConvertTo-Json -Depth 10 | Set-Content $p -Encoding UTF8
-    Write-Host "[OK] YOLO rezim zapnut (plati pro vsechny sessions)." -ForegroundColor Green
+    if ($Yolo) {
+        Write-Host "[OK] RemoteControl + YOLO rezim zapnuty (plati pro vsechny sessions)." -ForegroundColor Green
+    } else {
+        Write-Host "[OK] RemoteControl zapnuty pro vsechny sessions." -ForegroundColor Green
+    }
 }
 
 function Ask-Yolo {
@@ -47,8 +57,9 @@ function Ask-Yolo {
     $ans = Read-Host "  Zapnout YOLO? [Y/n]"
     if ($ans -match '^[Nn]') {
         Write-Host "YOLO rezim NEzapnuty (Claude se bude ptat na svoleni)."
+        Seed-Settings -Yolo $false
     } else {
-        Enable-Yolo
+        Seed-Settings -Yolo $true
     }
 }
 

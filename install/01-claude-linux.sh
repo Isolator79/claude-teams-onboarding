@@ -55,14 +55,18 @@ pkg_install() {
     esac
 }
 
-# --- YOLO rezim: zapis do ~/.claude/settings.json -------------
-enable_yolo() {
+# --- seed ~/.claude/settings.json -----------------------------
+#  RemoteControl (remoteControlAtStartup) zapiname VZDY = ovladani
+#  z aplikace Claude v kazde session, bez ptani.
+#  YOLO (bypassPermissions) jen kdyz si ho user zvoli (param $1 = 1).
+seed_settings() {
+    YOLO="${1:-0}"
     S="$HOME/.claude/settings.json"
     mkdir -p "$HOME/.claude"
     if command -v python3 >/dev/null 2>&1; then
-        python3 - "$S" <<'PY' && ok "YOLO rezim zapnut (plati pro vsechny sessions)."
+        python3 - "$S" "$YOLO" <<'PY'
 import json, os, sys
-p = sys.argv[1]
+p, yolo = sys.argv[1], sys.argv[2]
 d = {}
 if os.path.exists(p):
     try:
@@ -70,24 +74,39 @@ if os.path.exists(p):
             d = json.load(f)
     except Exception:
         d = {}
-d.setdefault("permissions", {})["defaultMode"] = "bypassPermissions"
-d["skipDangerousModePermissionPrompt"] = True
+d["remoteControlAtStartup"] = True
+if yolo == "1":
+    d.setdefault("permissions", {})["defaultMode"] = "bypassPermissions"
+    d["skipDangerousModePermissionPrompt"] = True
 with open(p, "w") as f:
     json.dump(d, f, indent=2)
 PY
+        if [ "$YOLO" = "1" ]; then ok "RemoteControl + YOLO rezim zapnuty (plati pro vsechny sessions)."
+        else ok "RemoteControl zapnuty pro vsechny sessions."; fi
     elif [ ! -f "$S" ]; then
-        cat > "$S" <<'EOF'
+        if [ "$YOLO" = "1" ]; then
+            cat > "$S" <<'EOF'
 {
+  "remoteControlAtStartup": true,
   "permissions": {
     "defaultMode": "bypassPermissions"
   },
   "skipDangerousModePermissionPrompt": true
 }
 EOF
-        ok "YOLO rezim zapnut (plati pro vsechny sessions)."
+            ok "RemoteControl + YOLO rezim zapnuty (plati pro vsechny sessions)."
+        else
+            cat > "$S" <<'EOF'
+{
+  "remoteControlAtStartup": true
+}
+EOF
+            ok "RemoteControl zapnuty pro vsechny sessions."
+        fi
     else
-        warn "Nemam python3 a settings.json uz existuje - YOLO nastav rucne:"
-        warn "  v $S nastav permissions.defaultMode na \"bypassPermissions\"."
+        warn "Nemam python3 a settings.json uz existuje - nastav rucne:"
+        warn "  v $S nastav \"remoteControlAtStartup\": true"
+        [ "$YOLO" = "1" ] && warn "  a permissions.defaultMode na \"bypassPermissions\"."
     fi
 }
 
@@ -105,8 +124,9 @@ ask_yolo() {
         echo "  (Neinteraktivni beh - zapinam YOLO automaticky.)"
     fi
     case "$ans" in
-        [Nn]*) info "YOLO rezim NEzapnuty (Claude se bude ptat na svoleni)." ;;
-        *)     enable_yolo ;;
+        [Nn]*) info "YOLO rezim NEzapnuty (Claude se bude ptat na svoleni)."
+               seed_settings 0 ;;
+        *)     seed_settings 1 ;;
     esac
 }
 
