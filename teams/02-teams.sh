@@ -1,52 +1,118 @@
 #!/usr/bin/env bash
 # ============================================================
-#  Krok 02 - Pripojeni Claude k tvemu Teams (Linux / Mac)
+#  Krok 02 - napojeni Claude na Microsoft Teams (Linux / macOS)
 # ------------------------------------------------------------
-#  Co to udela:
-#   1) Pokud jeste nejsi prihlaseny, prihlasi te do Teams
-#      (zkopirujes kod do prohlizece a prihlasis se svym
-#       uctem tvuj-email@bidli.cz).
-#   2) Spusti "most": v Teams ti vznikne skupinovy chat
-#      "Claude" (jen ty v nem). Co tam napises, Claude
-#      precte a odpovi ti primo do chatu.
+#  Tento skript je urceny ke spusteni primo z internetu
+#  (vzdy se tak vezme nejnovejsi verze z gitu):
 #
-#  Predpoklad: nainstalovany Claude Code (viz krok 01) a Python 3.
-#  Bezpecne poustet opakovane (idempotentni).
+#    curl -fsSL https://raw.githubusercontent.com/Isolator79/claude-teams-onboarding/main/teams/02-teams.sh | bash
+#
+#  Co to udela:
+#    - doinstaluje git a python3, pokud chybi,
+#    - stahne (nebo zaktualizuje) balik skriptu do slozky
+#      ~/claude-teams-onboarding,
+#    - pri prvnim behu te prihlasi do Teams (Microsoft 365),
+#    - spusti most: pises Claudovi v Teams, Claude odpovida.
+#  Nezavisle na ostatnich skriptech, bezpecne poustet opakovane.
+#
+#  POZOR - dva ruzne ucty:
+#    1) Claude ucet (kde Claude bezi/plati) - libovolny, klidne Gmail.
+#       To resi KROK 01 (instalace Claude Code).
+#    2) Teams / Microsoft 365 ucet - VZDY tvuj firemni @bidli.cz.
+#       Do nej se prihlasis nize (zkopirujes URL do prohlizece).
 # ============================================================
 
 set -uo pipefail
-cd "$(dirname "$0")" 2>/dev/null || true
+
+REPO_URL="https://github.com/Isolator79/claude-teams-onboarding.git"
+DEST="$HOME/claude-teams-onboarding"
 
 GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; BOLD='\033[1m'; NC='\033[0m'
+ok()   { echo -e "${GREEN}[OK]${NC} $*"; }
 info() { echo -e "${BOLD}$*${NC}"; }
 warn() { echo -e "${YELLOW}[POZOR]${NC} $*"; }
 err()  { echo -e "${RED}[CHYBA]${NC} $*"; }
 
-# --- Python 3 ---
+echo ""
+info "=== Krok 02: napojeni Claude na Teams ==="
+echo ""
+
+# --- spravce balicku (sudo jen kdyz je potreba) ----------------
+SUDO=""
+if [ "$(id -u)" -ne 0 ] && command -v sudo >/dev/null 2>&1; then SUDO="sudo"; fi
+
+PKG=""
+for m in apt-get dnf yum pacman zypper apk brew; do
+    command -v "$m" >/dev/null 2>&1 && { PKG="$m"; break; }
+done
+pkg_install() {
+    [ "$#" -eq 0 ] && return 0
+    case "$PKG" in
+        apt-get) $SUDO apt-get update -qq && $SUDO DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "$@" ;;
+        dnf)     $SUDO dnf install -y "$@" ;;
+        yum)     $SUDO yum install -y "$@" ;;
+        pacman)  $SUDO pacman -Sy --noconfirm "$@" ;;
+        zypper)  $SUDO zypper --non-interactive install "$@" ;;
+        apk)     $SUDO apk add "$@" ;;
+        brew)    brew install "$@" ;;
+        *)       return 1 ;;
+    esac
+}
+
+# --- zajisti git + python3 -------------------------------------
+NEED=()
+command -v git >/dev/null 2>&1 || NEED+=("git")
 PY=""
-command -v python3 >/dev/null 2>&1 && PY=python3
-[ -z "$PY" ] && command -v python >/dev/null 2>&1 && PY=python
-if [ -z "$PY" ]; then
-    err "Neni nainstalovany Python 3. Nainstaluj ho a spust skript znovu."
-    exit 1
-fi
+if command -v python3 >/dev/null 2>&1; then PY="python3"
+elif command -v python >/dev/null 2>&1; then PY="python"
+else NEED+=("python3"); fi
 
-# --- Claude Code ---
-if ! command -v claude >/dev/null 2>&1 && [ ! -x "$HOME/.local/bin/claude" ]; then
-    warn "Nenasel jsem program 'claude'. Nejdriv projdi krok 01 (instalace Claude Code)."
-    warn "Pokracuji dal - prihlaseni do Teams pujde, ale odpovidat bude az s Claude."
+if [ "${#NEED[@]}" -gt 0 ]; then
+    if [ -z "$PKG" ]; then
+        err "Chybi: ${NEED[*]} a nepoznal jsem spravce balicku. Nainstaluj je rucne a spust znovu."
+        exit 1
+    fi
+    info "Doinstalovavam: ${NEED[*]}"
+    pkg_install "${NEED[@]}" || warn "Cast balicku se nepodarilo doinstalovat - zkousim pokracovat."
+    command -v python3 >/dev/null 2>&1 && PY="python3"
+    [ -z "$PY" ] && command -v python >/dev/null 2>&1 && PY="python"
 fi
+if [ -z "$PY" ]; then err "Nenasel jsem python. Nainstaluj python3 a spust znovu."; exit 1; fi
+if ! command -v git >/dev/null 2>&1; then err "Nenasel jsem git. Nainstaluj git a spust znovu."; exit 1; fi
+ok "git i python jsou k dispozici."
 
-# --- 1) Prihlaseni, pokud chybi ---
-if [ ! -f "tokens.json" ]; then
-    info "Jeste nejsi prihlaseny do Teams. Spustim prihlaseni..."
-    "$PY" claude_teams.py login || exit 1
+# --- stahni / aktualizuj balik (idempotentne) ------------------
+if [ -d "$DEST/.git" ]; then
+    info "Balik uz mam, aktualizuji na nejnovejsi verzi (git pull)..."
+    git -C "$DEST" pull --ff-only || warn "git pull se nezdaril, pokracuji se stavajici verzi."
 else
-    info "Uz jsi prihlaseny do Teams (pouzivam ulozene prihlaseni)."
+    info "Stahuji balik do: $DEST"
+    git clone --depth 1 "$REPO_URL" "$DEST" || { err "Stazeni se nezdarilo."; exit 1; }
+fi
+ok "Balik pripraveny v: $DEST"
+
+CORE="$DEST/teams/claude_teams.py"
+if [ ! -f "$CORE" ]; then err "Chybi soubor $CORE - neco se nestahlo spravne."; exit 1; fi
+
+# --- upozorneni kdyz chybi Claude (krok 01) --------------------
+export PATH="$HOME/.local/bin:$HOME/.claude/bin:$PATH"
+if ! command -v claude >/dev/null 2>&1; then
+    warn "Nenasel jsem program 'claude' (Claude Code)."
+    warn "Most bude bezet, ale dokud Claude nenainstalujes (KROK 01), nebude umet odpovidat."
+    echo ""
 fi
 
-# --- 2) Spusteni mostu ---
+# --- prvni prihlaseni do Teams (pokud jeste neni) --------------
+if [ ! -f "$DEST/teams/tokens.json" ]; then
+    info "Jeste nejsi prihlaseny do Teams - spoustim prihlaseni..."
+    echo "(Zkopiruj vypsanou webovou adresu do prohlizece a prihlas se svym @bidli.cz uctem.)"
+    echo ""
+    "$PY" "$CORE" login || { err "Prihlaseni se nezdarilo. Spust prikaz znovu."; exit 1; }
+fi
+
+# --- spust most -----------------------------------------------
 echo ""
-info "Spoustim spojeni Teams <-> Claude. Nech toto okno otevrene."
+info "Spoustim most Teams <-> Claude. Pis si s Claude v Teams (chat 'Claude')."
+info "Most ukoncis stiskem Ctrl+C."
 echo ""
-exec "$PY" claude_teams.py run
+exec "$PY" "$CORE" run

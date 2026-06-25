@@ -3,55 +3,54 @@
 Tady najdes navody a hotove skripty, ktere ti pomohou rozjet vlastniho
 Claude (Claude Code) a pozdeji ho napojit na Teams.
 
-Skripty jsou cislovane podle poradi. Zacni cislem **01**.
+Kazdy krok = **jeden prikaz**, ktery zkopirujes a spustis. Prikaz si
+pokazde stahne **aktualni verzi z internetu** a spusti ji, takze:
+
+- kdyz prikaz spustis znovu, automaticky se aktualizuje na nejnovejsi verzi,
+- na poradi nezalezi a zadny krok nepotrebuje jiny,
+- spoustet vickrat je bezpecne (nic to nerozbije).
 
 ---
 
 ## Krok 01 - Nainstaluj si Claude Code
 
-Vyber si podle toho, na cem to chces provozovat. Mas dve moznosti:
+Vyber si podle toho, na cem to chces provozovat:
 
 - **Na svem pocitaci** (Windows nebo Mac) - dobre na hrani a vyzkouseni.
 - **Na hostingu / serveru** (Linux) - kdyz ma Claude bezet porad.
 
-Vsechny skripty jsou bezpecne - kdyz je spustis vickrat, nic nerozbiji
-(napr. po aktualizaci z internetu). Kdyz uz je neco nainstalovane, jen to oznami.
-
 ### Windows
 
-1. Stahni soubor [`install/01-claude-windows.cmd`](install/01-claude-windows.cmd).
-   (Na strance souboru klikni na **Download raw file** / **Raw** a uloz.)
-2. Dvojklik na stazeny soubor.
-   - Kdyby Windows hlasil "Windows ochranil pocitac", klikni na
-     **Dalsi informace** a pak **Presto spustit**.
-3. Pockej, az to dobehne, a ridil se pokyny na konci ("CO DAL").
+Stiskni klavesu **Windows**, napis `powershell`, otevri **Windows PowerShell**
+a vloz tento prikaz (Enter):
 
-> Funguje i na starsich/zakladnich Windows. Kdyz neni moderni Terminal
-> ani winget, skript pouzije nahradni zpusob automaticky.
+```
+irm https://raw.githubusercontent.com/Isolator79/claude-teams-onboarding/main/install/01-claude-windows.ps1 | iex
+```
+
+> Funguje i na starsich/zakladnich Windows. Kdyz neni winget, pouzije se
+> nahradni zpusob automaticky.
+>
+> Komu se nechce nic psat: stahni [`install/01-claude-windows.cmd`](install/01-claude-windows.cmd)
+> (na strance souboru **Raw** -> uloz) a dvojklik. Dela presne to same a
+> taky si vzdy stahne aktualni verzi. Kdyby Windows hlasil "Windows ochranil
+> pocitac", klikni **Dalsi informace** -> **Presto spustit**.
 
 ### Mac (macOS)
 
-1. Stahni soubor [`install/01-claude-macos.command`](install/01-claude-macos.command).
-2. Dvojklik na stazeny soubor.
-   - Kdyby to macOS nechtel spustit ("nelze otevrit, neznamy vyvojar"),
-     klikni na soubor **pravym tlacitkem** -> **Otevrit** -> **Otevrit**.
-   - Kdyby se misto spusteni otevrel text, otevri aplikaci **Terminal**
-     (Spotlight - lupa vpravo nahore - napis `Terminal`), pretahni do nej
-     stazeny soubor a stiskni Enter.
-3. Ridil se pokyny na konci ("CO DAL").
+Otevri aplikaci **Terminal** (Spotlight - lupa vpravo nahore - napis `Terminal`)
+a vloz tento prikaz (Enter):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Isolator79/claude-teams-onboarding/main/install/01-claude-macos.command | bash
+```
 
 ### Linux (hosting / server)
 
-Prihlas se na server a spust:
+Prihlas se na server a vloz tento prikaz (Enter):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Isolator79/claude-teams-onboarding/main/install/01-claude-linux.sh | bash
-```
-
-Nebo, kdyz mas repo stazene, spust primo:
-
-```bash
-bash install/01-claude-linux.sh
 ```
 
 Pak se ridil pokyny na konci ("CO DAL").
@@ -60,7 +59,7 @@ Pak se ridil pokyny na konci ("CO DAL").
 
 ## Prvni prihlaseni (plati pro vsechny)
 
-Po instalaci v novem okne napis:
+Po instalaci zavri okno, otevri **nove** a napis:
 
 ```
 claude
@@ -68,8 +67,6 @@ claude
 
 Pri prvnim spusteni se vypise **webova adresa (URL)**. Zkopiruj ji do
 prohlizece, prihlas se a potvrd. Pak uz si muzes s Claude psat.
-
----
 
 ---
 
@@ -86,27 +83,31 @@ Co tam napises, Claude precte a odpovi ti primo do chatu.
 - Tady v kroku 02 se prihlasujes do sveho **pracovniho uctu na Teams**,
   tedy **tvuj-email@bidli.cz**. Vsichni u nas maji Teams na bidli.cz.
 
-Predpoklad: hotovy krok 01 (nainstalovany Claude Code) a **Python 3**.
-
-### Windows
-
-1. Stahni celou slozku `teams/` (nebo cely tento projekt).
-2. Dvojklik na [`teams/02-teams.cmd`](teams/02-teams.cmd).
-3. Pri prvnim spusteni se vypise **kod** a **webova adresa**.
-   Adresu zkopiruj do prohlizece, zadej kod a prihlas se uctem bidli.cz.
-4. Hotovo - okno nech otevrene a piš si s Claude v Teams v chatu "Claude".
+Prikaz si sam doinstaluje co potrebuje (git, Python) a stahne se do slozky
+`claude-teams-onboarding` v tvem domovskem adresari. Pri opakovanem spusteni
+se aktualizuje. Prihlaseni se pamatuje - podruhe uz kod nezadavas.
 
 ### Mac / Linux
 
 ```bash
-bash teams/02-teams.sh
+curl -fsSL https://raw.githubusercontent.com/Isolator79/claude-teams-onboarding/main/teams/02-teams.sh | bash
 ```
+
+### Windows
+
+Ve **Windows PowerShell**:
+
+```
+irm https://raw.githubusercontent.com/Isolator79/claude-teams-onboarding/main/teams/02-teams.ps1 | iex
+```
+
+> Nebo dvojklik na stazeny [`teams/02-teams.cmd`](teams/02-teams.cmd).
 
 Pri prvnim spusteni zkopiruj vypsanou **adresu do prohlizece**, zadej
 **kod** a prihlas se uctem bidli.cz. Pak uz si pis s Claude v Teams.
 
 > Program nech bezet (na serveru klidne pres `tmux`). Ukoncis ho
-> klavesami Ctrl + C. Prihlaseni se pamatuje, podruhe uz kod nezadavas.
+> klavesami Ctrl + C.
 
 ---
 
