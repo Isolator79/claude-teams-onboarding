@@ -60,6 +60,29 @@ def _save(path, obj):
         pass
 
 
+def _ask(prompt_text):
+    """Precte jeden radek od uzivatele. Funguje i pri 'curl | bash':
+    pokud je standardni vstup terminal (shell ho umi presmerovat z /dev/tty),
+    cte se odtud; jinak se sahne primo na controlling terminal /dev/tty.
+    Nikdy nevyhazuje vyjimku - kdyz nic nedostane, vrati prazdny retezec."""
+    sys.stdout.write(prompt_text)
+    sys.stdout.flush()
+    # 1) standardni vstup, pokud je to terminal (napr. 'setup </dev/tty')
+    try:
+        if sys.stdin is not None and sys.stdin.isatty():
+            line = sys.stdin.readline()
+            if line:
+                return line.strip()
+    except Exception:
+        pass
+    # 2) nouzovka: primo controlling terminal
+    try:
+        with open("/dev/tty") as tty:
+            return (tty.readline() or "").strip()
+    except Exception:
+        return ""
+
+
 # ---------- Telegram API ------------------------------------------------
 
 def _token():
@@ -112,16 +135,10 @@ def setup():
     print("")
     token = sys.argv[2].strip() if len(sys.argv) > 2 else ""
     if not token:
-        try:
-            with open("/dev/tty") as tty:
-                sys.stdout.write("Vloz sem token od @BotFather: ")
-                sys.stdout.flush()
-                token = (tty.readline() or "").strip()
-        except Exception:
-            print("[CHYBA] Nemam token. Spust: setup <token>")
-            sys.exit(1)
+        token = _ask("Vloz sem token od @BotFather: ")
     if not token:
-        print("[CHYBA] Prazdny token.")
+        print("[CHYBA] Nedostal jsem zadny token. Spust prikaz znovu a token vloz,")
+        print("        pripadne ho predej rovnou: setup <token>")
         sys.exit(1)
 
     _save(TOKENS, {"token": token})
@@ -136,16 +153,11 @@ def setup():
 
     # Volitelne: pod jakym jmenem se bot zobrazuje v Telegramu (Bot API setMyName).
     # Hodi se, kdyz uz mas jineho bota a chces je od sebe rozlisit.
-    newname = sys.argv[3].strip() if len(sys.argv) > 3 else None
-    if newname is None:
-        try:
-            with open("/dev/tty") as tty:
-                sys.stdout.write("Pod jakym jmenem se ma bot zobrazovat? "
-                                 "(Enter = nechat '%s'): " % curname)
-                sys.stdout.flush()
-                newname = (tty.readline() or "").strip()
-        except Exception:
-            newname = ""
+    if len(sys.argv) > 3:
+        newname = sys.argv[3].strip()
+    else:
+        newname = _ask("Pod jakym jmenem se ma bot zobrazovat? "
+                       "(Enter = nechat '%s'): " % curname)
     if newname:
         st2, r2 = tg("setMyName", {"name": newname})
         if st2 == 200 and r2.get("ok"):

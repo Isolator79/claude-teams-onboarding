@@ -101,7 +101,14 @@ fi
 if [ ! -f "$DEST/telegram/telegram_token.json" ] || [ ! -f "$DEST/telegram/telegram_state.json" ]; then
     info "Jeste nemas nastaveneho Telegram bota - spoustim nastaveni..."
     echo ""
-    "$PY" "$CORE" setup || { err "Nastaveni se nezdarilo. Spust prikaz znovu."; exit 1; }
+    # I pri spousteni 'curl ... | bash' chceme cist token z klavesnice.
+    # Pokud je k dispozici controlling terminal, presmerujeme ho pythonu
+    # na vstup; jinak (neinteraktivni beh) spustime bez presmerovani.
+    if { : </dev/tty; } 2>/dev/null; then
+        "$PY" "$CORE" setup </dev/tty || { err "Nastaveni se nezdarilo. Spust prikaz znovu."; exit 1; }
+    else
+        "$PY" "$CORE" setup || { err "Nastaveni se nezdarilo. Spust prikaz znovu."; exit 1; }
+    fi
 fi
 
 # --- instalace mostu jako sluzby na pozadi (systemd --user) ----
