@@ -71,9 +71,46 @@ prohlizece, prihlas se a potvrd. Pak uz si muzes s Claude psat.
 
 ---
 
+---
+
+## Krok 02 - Pripoj Claude k Teams
+
+Aby sis s Claude mohl psat primo ve svem **Teams** (podobne jako pres
+Telegram). V Teams ti vznikne skupinovy chat **"Claude"** (jen ty v nem).
+Co tam napises, Claude precte a odpovi ti primo do chatu.
+
+**Dulezite - dva ruzne ucty se nepletou:**
+
+- Ucet, na kterem bezi **Claude** (krok 01), muze byt jakykoliv
+  (klidne placena verze na Gmailu). S Teams nema nic spolecneho.
+- Tady v kroku 02 se prihlasujes do sveho **pracovniho uctu na Teams**,
+  tedy **tvuj-email@bidli.cz**. Vsichni u nas maji Teams na bidli.cz.
+
+Predpoklad: hotovy krok 01 (nainstalovany Claude Code) a **Python 3**.
+
+### Windows
+
+1. Stahni celou slozku `teams/` (nebo cely tento projekt).
+2. Dvojklik na [`teams/02-teams.cmd`](teams/02-teams.cmd).
+3. Pri prvnim spusteni se vypise **kod** a **webova adresa**.
+   Adresu zkopiruj do prohlizece, zadej kod a prihlas se uctem bidli.cz.
+4. Hotovo - okno nech otevrene a piš si s Claude v Teams v chatu "Claude".
+
+### Mac / Linux
+
+```bash
+bash teams/02-teams.sh
+```
+
+Pri prvnim spusteni zkopiruj vypsanou **adresu do prohlizece**, zadej
+**kod** a prihlas se uctem bidli.cz. Pak uz si pis s Claude v Teams.
+
+> Program nech bezet (na serveru klidne pres `tmux`). Ukoncis ho
+> klavesami Ctrl + C. Prihlaseni se pamatuje, podruhe uz kod nezadavas.
+
+---
+
 ## Co bude dal
 
-- **Napojeni na Teams** - aby sis s Claude mohl psat primo ve svem Teams
-  (jako pres Telegram). Skript pridame jako dalsi krok.
 - **tmux** - aby Claude bezel na serveru porad (i kdyz zavres okno).
   Dostanes samostatne.

@@ -1,0 +1,8 @@
+# Citlive a runtime soubory - NIKDY je necommitovat.
+# Obsahuji prihlaseni k uctu uzivatele.
+tokens.json
+state.json
+devicecode.json
+*.log
+__pycache__/
+*.pyc
