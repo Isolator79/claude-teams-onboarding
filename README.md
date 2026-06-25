@@ -1,7 +1,7 @@
 # Claude pro nas tym
 
 Tady najdes navody a hotove skripty, ktere ti pomohou rozjet vlastniho
-Claude (Claude Code) a pozdeji ho napojit na Teams.
+Claude (Claude Code) a pozdeji ho napojit na Teams nebo Telegram.
 
 Kazdy krok = **jeden prikaz**, ktery zkopirujes a spustis. Prikaz si
 pokazde stahne **aktualni verzi z internetu** a spusti ji, takze:
@@ -106,12 +106,45 @@ irm https://raw.githubusercontent.com/Isolator79/claude-teams-onboarding/main/te
 Pri prvnim spusteni zkopiruj vypsanou **adresu do prohlizece**, zadej
 **kod** a prihlas se uctem bidli.cz. Pak uz si pis s Claude v Teams.
 
-> Program nech bezet (na serveru klidne pres `tmux`). Ukoncis ho
-> klavesami Ctrl + C.
+Most se rovnou nainstaluje jako **sluzba na pozadi** - bezi nonstop a
+nabehne sam i po restartu serveru, takze okno muzes zavrit. V Teams uvidis
+i **prubeh prace** (jako ziva session), ne jen finalni odpoved. A kdyz
+poprosis, Claude ti **koukne i do mailu, kalendare nebo na OneDrive**
+(pouziva stejne prihlaseni).
+
+> Sprava sluzby: `systemctl --user status claude-teams` (stav),
+> `systemctl --user stop claude-teams` (zastav), `... start ...` (spust).
+
+---
+
+## Krok 03 - Pripoj Claude k Telegramu (snadnejsi varianta)
+
+Pokud chces psat Claudovi radeji v **Telegramu** (notifikace tam chodi uplne
+normalne a nastaveni je jednodussi nez Teams), pouzij tohle. Bezi v **oddelene
+session** nez Teams - klidne muzes mit oboji zaroven.
+
+Co budes potrebovat: **token bota** od **@BotFather** (skript te tim provede -
+v Telegramu napises @BotFather `/newbot`, das jmeno a dostanes token).
+
+### Mac / Linux
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Isolator79/claude-teams-onboarding/main/telegram/03-telegram.sh | bash
+```
+
+Skript se zepta na token, pak te poprosi napsat svemu botovi zpravu (aby se
+spojil prave s tebou) a nainstaluje se jako **sluzba na pozadi** (bezi nonstop,
+nabehne i po restartu serveru). Pak uz jen pises botovi v Telegramu.
+
+> Sprava sluzby: `systemctl --user status claude-telegram` (stav),
+> `... stop ...` / `... start ...`.
+>
+> Pokud mas rozjety i Teams (krok 02), umi ti Claude i pres Telegram kouknout
+> do mailu a kalendare (pouzije stejne M365 prihlaseni).
 
 ---
 
 ## Co bude dal
 
-- **tmux** - aby Claude bezel na serveru porad (i kdyz zavres okno).
+- **tmux** - rucni spousteni na serveru (alternativa ke sluzbe na pozadi).
   Dostanes samostatne.

@@ -3,6 +3,8 @@
 tokens.json
 state.json
 devicecode.json
+telegram_token.json
+telegram_state.json
 *.log
 __pycache__/
 *.pyc
