@@ -210,9 +210,26 @@ def find_or_create_chat():
     return d["id"]
 
 
+def _chunks(s, n):
+    # Teams ma limit na delku zpravy - dlouhy text rozsekame na kusy.
+    s = str(s)
+    if len(s) <= n:
+        return [s]
+    return [s[i:i + n] for i in range(0, len(s), n)]
+
+
 def send(chat_id, text):
-    api("POST", "/chats/%s/messages" % chat_id,
-        {"body": {"contentType": "text", "content": BOT_PREFIX + text}})
+    """Posle zpravu do Teams chatu. Hlida chyby (drive je spolkl tise)
+    a dlouhe zpravy posila po castech."""
+    if text is None:
+        return
+    for ch in _chunks(text, 3500):
+        if not ch.strip():
+            continue
+        st, d = api("POST", "/chats/%s/messages" % chat_id,
+                    {"body": {"contentType": "text", "content": BOT_PREFIX + ch}})
+        if st not in (200, 201):
+            print("[POZOR] Zpravu se nepodarilo poslat do Teams (stav %s): %s" % (st, d))
 
 
 def get_new_user_messages(chat_id, last_id):
@@ -257,26 +274,87 @@ def _strip_html(s):
 
 # ---------- Claude Code -------------------------------------------------
 
-def ask_claude(text, session_id, first):
-    """Posle text Claude Code a vrati odpoved. Drzi kontext konverzace
-    pres stabilni session id (prvni zprava zaklada, dalsi navazuji)."""
+def _tool_note(name, inp):
+    """Z volani nastroje udela kratkou lidskou hlasku do Teams,
+    aby uzivatel videl, co Claude prave dela (jako v session)."""
+    name = name or "nastroj"
+    inp = inp or {}
+    if name == "Bash":
+        detail = inp.get("command", "")
+    elif name in ("Read", "Edit", "Write", "NotebookEdit"):
+        detail = inp.get("file_path", "")
+    elif name in ("Grep", "Glob"):
+        detail = inp.get("pattern", "")
+    elif name in ("WebFetch", "WebSearch"):
+        detail = inp.get("url", inp.get("query", ""))
+    else:
+        try:
+            detail = json.dumps(inp, ensure_ascii=False)
+        except Exception:
+            detail = str(inp)
+    detail = " ".join(str(detail).split())
+    if len(detail) > 200:
+        detail = detail[:200] + "..."
+    return ("[ %s ] %s" % (name, detail)).strip()
+
+
+def ask_claude_stream(text, session_id, first, chat_id):
+    """Spusti Claude Code v rezimu streamu a kazdy krok (muj text i volani
+    nastroju) prubezne posila do Teams - aby to bylo jako ziva session.
+    Bezi s pristupem k nastrojum (vc. graph.py na M365) v teto slozce."""
     claude = _find_claude()
     if not claude:
-        return "[Nemohu najit program 'claude'. Je Claude Code nainstalovany? Viz krok 01.]"
+        send(chat_id, "[Nemohu najit program 'claude'. Je Claude Code nainstalovany? Viz KROK 01.]")
+        return
+    base = [claude, "-p", "--output-format", "stream-json", "--verbose",
+            "--permission-mode", "bypassPermissions"]
     if first:
-        cmd = [claude, "-p", "--session-id", session_id, text]
+        cmd = base + ["--session-id", session_id, text]
     else:
-        cmd = [claude, "-p", "--resume", session_id, text]
+        cmd = base + ["--resume", session_id, text]
     try:
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-        out = (r.stdout or "").strip()
-        if not out:
-            out = (r.stderr or "").strip() or "[Claude nevratil zadnou odpoved.]"
-        return out
-    except subprocess.TimeoutExpired:
-        return "[Claude odpovida prilis dlouho - zkus to prosim znovu.]"
+        # cwd=HERE -> Claude nacte CLAUDE.md v teto slozce a vidi graph.py.
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                             text=True, cwd=HERE, bufsize=1)
     except Exception as e:
-        return "[Chyba pri volani Claude: %s]" % e
+        send(chat_id, "[Chyba pri spousteni Claude: %s]" % e)
+        return
+
+    sent_any = False
+    final = None
+    try:
+        for line in p.stdout:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                ev = json.loads(line)
+            except Exception:
+                continue
+            t = ev.get("type")
+            if t == "assistant":
+                for block in (ev.get("message") or {}).get("content", []):
+                    bt = block.get("type")
+                    if bt == "text":
+                        tx = (block.get("text") or "").strip()
+                        if tx:
+                            send(chat_id, tx)
+                            sent_any = True
+                    elif bt == "tool_use":
+                        send(chat_id, _tool_note(block.get("name"), block.get("input")))
+                        sent_any = True
+            elif t == "result":
+                final = (ev.get("result") or "").strip()
+        try:
+            p.wait(timeout=600)
+        except Exception:
+            p.kill()
+    except Exception as e:
+        send(chat_id, "[Chyba pri cteni odpovedi: %s]" % e)
+
+    # Kdyby stream nic neposlal (napr. jen vysledek), posli aspon finalni text.
+    if not sent_any:
+        send(chat_id, final or "[Claude nevratil zadnou odpoved.]")
 
 
 def _find_claude():
@@ -310,13 +388,15 @@ def run():
     print("Ucet:   ", name)
     print("Chat:   ", CHAT_TOPIC, "(najdes ho v Teams jako skupinovy chat jen s tebou)")
     print("")
-    print("Napis si do toho chatu cokoliv - Claude ti odpovi.")
-    print("Tento program nech bezet. Ukoncis ho klavesami Ctrl + C.")
+    print("Napis si do toho chatu cokoliv - Claude ti odpovi a uvidis i prubeh.")
+    print("Umi i tvuj mail, kalendar, OneDrive a Teams zpravy (staci poprosit).")
+    print("Pokud most bezi jako sluzba na pozadi, muzes toto okno zavrit.")
     print("")
 
     # uvitaci zprava jen pri uplne prvnim spusteni
     if last_id is None:
-        send(chat_id, "Jsem pripojeny. Napis mi sem cokoliv a odpovim ti.")
+        send(chat_id, "Jsem pripojeny. Pis mi sem prompty - uvidis i prubeh prace. "
+                      "Umim i tvuj mail, kalendar, OneDrive a Teams zpravy, staci rict.")
 
     while True:
         try:
@@ -329,12 +409,12 @@ def run():
                 if not text:
                     continue
                 print("[ty]", text)
-                reply = ask_claude(text, session_id, first)
+                send(chat_id, "Pracuji na tom...")
+                ask_claude_stream(text, session_id, first, chat_id)
                 first = False
                 state["session_started"] = True
                 _save(STATE, state)
-                send(chat_id, reply)
-                print("[claude]", reply[:120])
+                print("[claude] (prubeh i odpoved odeslany do Teams)")
             time.sleep(POLL_SECONDS)
         except KeyboardInterrupt:
             print("\nUkonceno.")
