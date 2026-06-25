@@ -141,56 +141,32 @@ EOF
     return 0
 }
 
-# --- jak most spustit: na pozadi jako sluzba, nebo tady v okne? ---
+# --- spust most na pozadi (vzdy, bez ptani) --------------------
 echo ""
-HAS_SYSTEMD=0
-if command -v systemctl >/dev/null 2>&1 && [ -d /run/systemd/system ]; then HAS_SYSTEMD=1; fi
-
-RUN_BG="Y"
-if [ -r /dev/tty ]; then
-    info "Chces, aby most bezel trvale na pozadi (i po restartu serveru)?"
-    echo "  ANO = nainstaluje se jako sluzba, bezi nonstop a sama nabehne po restartu."
-    echo "        Toto okno pak muzes klidne zavrit. (doporuceno pro server)"
-    echo "  NE  = most pobezi jen tady v tomto okne, dokud ho nezavres (Ctrl+C)."
-    printf "  Spustit na pozadi jako sluzbu? [Y/n]: "
-    read -r RUN_BG < /dev/tty || RUN_BG="Y"
-    [ -z "$RUN_BG" ] && RUN_BG="Y"
+if command -v systemctl >/dev/null 2>&1 && [ -d /run/systemd/system ]; then
+    info "Instaluji most jako sluzbu na pozadi (bezi nonstop, nabehne i po restartu serveru)..."
+    if install_service_systemd; then
+        echo ""
+        ok "Most bezi na pozadi jako sluzba 'claude-teams'. Toto okno muzes zavrit."
+        echo ""
+        info "Uzitecne prikazy:"
+        echo "  stav:      systemctl --user status claude-teams"
+        echo "  zivy log:  journalctl --user -u claude-teams -f"
+        echo "  stop:      systemctl --user stop claude-teams"
+        echo "  start:     systemctl --user start claude-teams"
+        echo ""
+        ok "Ted uz si jen pis s Claude v Teams (chat 'Claude')."
+    else
+        warn "Sluzbu se nepodarilo nainstalovat - spoustim na pozadi pres nohup."
+        LOG="$DEST/teams/most.log"
+        nohup "$PY" "$CORE" run >"$LOG" 2>&1 &
+        ok "Most bezi na pozadi (PID $!). Log: $LOG"
+    fi
+else
+    warn "Tento system nema systemd (napr. macOS) - spoustim na pozadi pres nohup."
+    LOG="$DEST/teams/most.log"
+    nohup "$PY" "$CORE" run >"$LOG" 2>&1 &
+    echo ""
+    ok "Most bezi na pozadi (PID $!). Log: $LOG"
+    warn "Pozn.: po restartu pocitace ho spustis znovu prikazem KROK 02."
 fi
-
-case "$RUN_BG" in
-    [Nn]*)
-        echo ""
-        info "Spoustim most tady v okne. Pis si s Claude v Teams (chat 'Claude')."
-        info "Most ukoncis stiskem Ctrl+C."
-        echo ""
-        exec "$PY" "$CORE" run
-        ;;
-    *)
-        if [ "$HAS_SYSTEMD" -eq 1 ]; then
-            info "Instaluji most jako sluzbu na pozadi..."
-            if install_service_systemd; then
-                echo ""
-                ok "Most bezi na pozadi jako sluzba 'claude-teams' a sam nabehne i po restartu serveru."
-                echo ""
-                info "Uzitecne prikazy:"
-                echo "  stav:      systemctl --user status claude-teams"
-                echo "  zivy log:  journalctl --user -u claude-teams -f"
-                echo "  stop:      systemctl --user stop claude-teams"
-                echo "  start:     systemctl --user start claude-teams"
-                echo ""
-                ok "Ted uz si jen pis s Claude v Teams (chat 'Claude'). Okno muzes zavrit."
-            else
-                warn "Sluzbu se nepodarilo nainstalovat - spoustim most tady v okne (Ctrl+C ukonci)."
-                echo ""
-                exec "$PY" "$CORE" run
-            fi
-        else
-            warn "Tento system nema systemd (napr. macOS) - spoustim na pozadi pres nohup."
-            LOG="$DEST/teams/most.log"
-            nohup "$PY" "$CORE" run >"$LOG" 2>&1 &
-            echo ""
-            ok "Most bezi na pozadi (PID $!). Log: $LOG"
-            warn "Pozn.: po restartu pocitace ho spustis znovu prikazem KROK 02."
-        fi
-        ;;
-esac

@@ -395,10 +395,15 @@ def run():
     print("Pokud most bezi jako sluzba na pozadi, muzes toto okno zavrit.")
     print("")
 
-    # uvitaci zprava jen pri uplne prvnim spusteni
-    if last_id is None:
-        send(chat_id, "Jsem pripojeny. Pis mi sem prompty - uvidis i prubeh prace. "
+    # uvitaci zprava pri kazdem startu mostu (ne casteji nez po 5 minutach,
+    # aby pripadny restart sluzby nezahltil chat)
+    now = int(time.time())
+    if now - state.get("last_welcome", 0) > 300:
+        send(chat_id, "Ahoj, jsem online a napojeny na tvuj Teams. "
+                      "Napis mi sem prompt - uvidis i prubeh prace. "
                       "Umim i tvuj mail, kalendar, OneDrive a Teams zpravy, staci rict.")
+        state["last_welcome"] = now
+        _save(STATE, state)
 
     while True:
         try:
