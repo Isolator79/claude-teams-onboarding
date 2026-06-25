@@ -400,9 +400,18 @@ def run():
     # aby pripadny restart sluzby nezahltil chat)
     now = int(time.time())
     if now - state.get("last_welcome", 0) > 300:
-        send(chat_id, "Ahoj, jsem online a napojeny na tvuj Teams. "
-                      "Napis mi sem prompt - uvidis i prubeh prace. "
-                      "Umim i tvuj mail, kalendar, OneDrive a Teams zpravy, staci rict.")
+        send(chat_id,
+             "Ahoj, jsem online a napojeny na tvuj Microsoft 365 pres Teams.\n\n"
+             "Tim, ze jsi me prave pripojil, mas odsud kontrolu nad svym "
+             "mailem, kalendarem, OneDrivem i Teams zpravami - staci napsat, co chces. "
+             "Uvidis i prubeh prace, jako ziva session.\n\n"
+             "Zkus treba:\n"
+             "- Podivej se mi do mailu, mam neco noveho?\n"
+             "- Posli mail na jan@firma.cz, predmet Schuzka, text Muzeme v patek?\n"
+             "- Co mam dnes v kalendari?\n"
+             "- Ukaz moje posledni Teams chaty\n"
+             "- Co mam na OneDrive?\n\n"
+             "A samozrejme cokoliv dalsiho - klidne i bezne otazky nebo praci s kodem.")
         state["last_welcome"] = now
         _save(STATE, state)
 

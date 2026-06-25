@@ -141,26 +141,44 @@ EOF
     return 0
 }
 
+# --- co tim user prave ziskal (vypise se po uspesnem spusteni) -
+print_unlocked() {
+    echo ""
+    info "Co jsi prave ziskal:"
+    echo "  Pres chat 'Claude' v Teams mas ted kontrolu nad svym Microsoft 365 -"
+    echo "  mailem, kalendarem, OneDrivem i Teams zpravami. Staci napsat, co chces;"
+    echo "  Claude uz je prihlaseny pod tvym uctem (nic dalsiho nenastavujes)."
+    echo ""
+    info "Zkus napsat do chatu 'Claude' treba:"
+    echo "  - Podivej se mi do mailu, mam neco noveho?"
+    echo "  - Posli mail na jan@firma.cz, predmet Schuzka, text Muzeme v patek?"
+    echo "  - Co mam dnes v kalendari?"
+    echo "  - Ukaz moje posledni Teams chaty"
+    echo "  - Co mam na OneDrive?"
+    echo "  ... a samozrejme cokoliv dalsiho (i bezne otazky nebo praci s kodem)."
+    echo ""
+}
+
 # --- spust most na pozadi (vzdy, bez ptani) --------------------
 echo ""
 if command -v systemctl >/dev/null 2>&1 && [ -d /run/systemd/system ]; then
     info "Instaluji most jako sluzbu na pozadi (bezi nonstop, nabehne i po restartu serveru)..."
     if install_service_systemd; then
         echo ""
-        ok "Most bezi na pozadi jako sluzba 'claude-teams'. Toto okno muzes zavrit."
+        ok "Most bezi na pozadi jako sluzba 'claude-teams'."
         echo ""
         info "Uzitecne prikazy:"
         echo "  stav:      systemctl --user status claude-teams"
         echo "  zivy log:  journalctl --user -u claude-teams -f"
         echo "  stop:      systemctl --user stop claude-teams"
         echo "  start:     systemctl --user start claude-teams"
-        echo ""
-        ok "Ted uz si jen pis s Claude v Teams (chat 'Claude')."
+        print_unlocked
     else
         warn "Sluzbu se nepodarilo nainstalovat - spoustim na pozadi pres nohup."
         LOG="$DEST/teams/most.log"
         nohup "$PY" "$CORE" run >"$LOG" 2>&1 &
         ok "Most bezi na pozadi (PID $!). Log: $LOG"
+        print_unlocked
     fi
 else
     warn "Tento system nema systemd (napr. macOS) - spoustim na pozadi pres nohup."
@@ -169,4 +187,5 @@ else
     echo ""
     ok "Most bezi na pozadi (PID $!). Log: $LOG"
     warn "Pozn.: po restartu pocitace ho spustis znovu prikazem KROK 02."
+    print_unlocked
 fi
