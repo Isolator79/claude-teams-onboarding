@@ -30,6 +30,7 @@ AUTHORITY = "https://login.microsoftonline.com/organizations"
 # takze prihlaseni neukaze zadnou obrazovku se souhlasem.
 SCOPE = ("offline_access User.Read "
          "Chat.ReadWrite ChatMessage.Send "
+         "ChannelMessage.Send Channel.ReadBasic.All Team.ReadBasic.All "
          "Mail.ReadWrite Mail.Send Calendars.ReadWrite Files.ReadWrite.All")
 
 GRAPH = "https://graph.microsoft.com/v1.0"
