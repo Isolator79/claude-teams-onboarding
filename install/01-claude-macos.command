@@ -3,9 +3,9 @@
 #  Claude Code - instalace na macOS (Apple)
 # ------------------------------------------------------------
 #  Pro koho: pro tve Apple PC (MacBook, iMac).
-#  Jak spustit: dvojklik na tento soubor. Kdyby to slo otevrit
-#  v textovem editoru misto spusteni, viz navod v README.
-#  Bezpecne poustet opakovane (idempotentni).
+#  Spustit ho muzes dvojklikem na stazeny soubor, nebo prikazem
+#  v Terminalu (viz README). Bezpecne poustet opakovane.
+#  Na konci se zepta, jestli chces YOLO rezim (default ANO).
 # ============================================================
 
 set -uo pipefail
@@ -26,22 +26,86 @@ echo ""
 # Kde hleda program po instalaci.
 export PATH="$HOME/.local/bin:$HOME/.claude/bin:$PATH"
 
+# --- YOLO rezim: zapis do ~/.claude/settings.json -------------
+enable_yolo() {
+    S="$HOME/.claude/settings.json"
+    mkdir -p "$HOME/.claude"
+    if command -v python3 >/dev/null 2>&1; then
+        python3 - "$S" <<'PY' && ok "YOLO rezim zapnut (plati pro vsechny sessions)."
+import json, os, sys
+p = sys.argv[1]
+d = {}
+if os.path.exists(p):
+    try:
+        with open(p) as f:
+            d = json.load(f)
+    except Exception:
+        d = {}
+d.setdefault("permissions", {})["defaultMode"] = "bypassPermissions"
+d["skipDangerousModePermissionPrompt"] = True
+with open(p, "w") as f:
+    json.dump(d, f, indent=2)
+PY
+    elif [ ! -f "$S" ]; then
+        cat > "$S" <<'EOF'
+{
+  "permissions": {
+    "defaultMode": "bypassPermissions"
+  },
+  "skipDangerousModePermissionPrompt": true
+}
+EOF
+        ok "YOLO rezim zapnut (plati pro vsechny sessions)."
+    else
+        warn "Nemam python3 a settings.json uz existuje - YOLO nastav rucne:"
+        warn "  v $S nastav permissions.defaultMode na \"bypassPermissions\"."
+    fi
+}
+
+ask_yolo() {
+    echo ""
+    info "Chces zapnout YOLO rezim?"
+    echo "  YOLO = Claude se nepta na svoleni pro kazdou drobnost (rychlejsi"
+    echo "  prace). Plati pro vsechny sessions. Doporuceno pro zacatek."
+    ans="Y"
+    if [ -r /dev/tty ]; then
+        printf "  Zapnout YOLO? [Y/n]: "
+        read -r ans < /dev/tty || ans="Y"
+        [ -z "$ans" ] && ans="Y"
+    else
+        echo "  (Neinteraktivni beh - zapinam YOLO automaticky.)"
+    fi
+    case "$ans" in
+        [Nn]*) info "YOLO rezim NEzapnuty (Claude se bude ptat na svoleni)." ;;
+        *)     enable_yolo ;;
+    esac
+}
+
+pause_end() {
+    echo ""
+    if [ -r /dev/tty ]; then
+        read -n 1 -s -r -p "Stiskni libovolnou klavesu pro zavreni..." < /dev/tty || true
+        echo ""
+    fi
+}
+
 # --- 1) Uz nainstalovano? (idempotence) -----------------------
 if command -v claude >/dev/null 2>&1; then
     VER="$(claude --version 2>/dev/null || echo '?')"
     ok "Claude Code uz je nainstalovany (verze: ${VER})."
-    info "Aktualizaci si Claude resi sam. Pokud chces rucne: claude update"
+    info "Zkousim aktualizaci..."
+    claude update 2>/dev/null && ok "Aktualizace probehla (nebo uz mas nejnovejsi)." || warn "Aktualizaci nelze spustit automaticky (nevadi)."
+    ask_yolo
     echo ""
     info "Spustis ho prikazem:  claude"
-    echo ""
-    read -n 1 -s -r -p "Stiskni libovolnou klavesu pro zavreni..."
-    echo ""
+    pause_end
     exit 0
 fi
 
 # --- 2) curl je na macOS soucasti systemu ---------------------
 if ! command -v curl >/dev/null 2>&1; then
     err "Chybi 'curl' (na macOS byva vzdy). Neco je neobvykle - napis nam."
+    pause_end
     exit 1
 fi
 
@@ -51,7 +115,7 @@ if curl -fsSL https://claude.ai/install.sh | bash; then
     ok "Installer dobehl."
 else
     err "Instalace selhala. Zkontroluj pripojeni k internetu a spust skript znovu."
-    read -n 1 -s -r -p "Stiskni libovolnou klavesu pro zavreni..."
+    pause_end
     exit 1
 fi
 
@@ -70,7 +134,10 @@ for RC in "$HOME/.zshrc" "$HOME/.bash_profile"; do
 done
 export PATH="$HOME/.local/bin:$HOME/.claude/bin:$PATH"
 
-# --- 5) Overeni -----------------------------------------------
+# --- 5) YOLO rezim --------------------------------------------
+ask_yolo
+
+# --- 6) Overeni -----------------------------------------------
 echo ""
 if command -v claude >/dev/null 2>&1; then
     ok "Hotovo. Verze: $(claude --version 2>/dev/null || echo '?')"
@@ -88,6 +155,4 @@ echo "3) Pri prvnim spusteni se vypise webova adresa (URL)."
 echo "   Zkopiruj ji do prohlizece, prihlas se a potvrd."
 echo "   Pak uz si muzes s Claude psat primo v Terminalu."
 echo "======================================="
-echo ""
-read -n 1 -s -r -p "Stiskni libovolnou klavesu pro zavreni..."
-echo ""
+pause_end

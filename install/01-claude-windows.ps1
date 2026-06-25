@@ -24,6 +24,34 @@ function Update-PathInSession {
     $env:Path = "$machine;$user;$local"
 }
 
+function Enable-Yolo {
+    $p = Join-Path $env:USERPROFILE '.claude\settings.json'
+    $d = Split-Path $p
+    if (-not (Test-Path $d)) { New-Item -ItemType Directory -Path $d -Force | Out-Null }
+    $j = if (Test-Path $p) {
+        $c = Get-Content $p -Raw
+        if ($c) { $c | ConvertFrom-Json } else { [PSCustomObject]@{} }
+    } else { [PSCustomObject]@{} }
+    if (-not $j.permissions) { $j | Add-Member -NotePropertyName permissions -NotePropertyValue ([PSCustomObject]@{}) -Force }
+    $j.permissions | Add-Member -NotePropertyName defaultMode -NotePropertyValue 'bypassPermissions' -Force
+    $j | Add-Member -NotePropertyName skipDangerousModePermissionPrompt -NotePropertyValue $true -Force
+    $j | ConvertTo-Json -Depth 10 | Set-Content $p -Encoding UTF8
+    Write-Host "[OK] YOLO rezim zapnut (plati pro vsechny sessions)." -ForegroundColor Green
+}
+
+function Ask-Yolo {
+    Write-Host ""
+    Write-Host "Chces zapnout YOLO rezim?" -ForegroundColor Cyan
+    Write-Host "  YOLO = Claude se nepta na svoleni pro kazdou drobnost (rychlejsi"
+    Write-Host "  prace). Plati pro vsechny sessions. Doporuceno pro zacatek."
+    $ans = Read-Host "  Zapnout YOLO? [Y/n]"
+    if ($ans -match '^[Nn]') {
+        Write-Host "YOLO rezim NEzapnuty (Claude se bude ptat na svoleni)."
+    } else {
+        Enable-Yolo
+    }
+}
+
 Write-Host ""
 Write-Host "=== Instalace Claude Code (Windows) ===" -ForegroundColor Cyan
 Write-Host ""
@@ -34,6 +62,7 @@ if (Test-Cmd 'claude') {
     Write-Host "[OK] Claude Code uz je nainstalovany." -ForegroundColor Green
     Write-Host "Zkousim aktualizaci..."
     try { claude update } catch { Write-Host "[POZOR] Aktualizaci nelze spustit automaticky (nevadi, Claude se umi updatovat i sam)." -ForegroundColor Yellow }
+    Ask-Yolo
     Write-Host ""
     Write-Host "Spustis ho prikazem:  claude"
 }
@@ -65,6 +94,7 @@ else {
     Write-Host ""
     if ($done) {
         Write-Host "[OK] Hotovo - Claude Code je nainstalovany." -ForegroundColor Green
+        Ask-Yolo
     } else {
         Write-Host "[POZOR] Instalaci se nepodarilo dokoncit automaticky." -ForegroundColor Yellow
         Write-Host "  - Zkontroluj pripojeni k internetu."

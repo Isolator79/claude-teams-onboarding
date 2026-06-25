@@ -7,8 +7,10 @@
 #    - doinstaluje zakladni knihovny, pokud na cerstvem OS chybi
 #      (curl, ca-certificates, git, python3 - python3 je potreba
 #       pro pozdejsi napojeni na Teams),
-#    - nainstaluje program "claude" (Claude Code),
-#    - kdyz uz "claude" je, zkusi ho aktualizovat (update).
+#    - nainstaluje program "claude" (Claude Code), nebo kdyz uz je,
+#      zkusi ho aktualizovat (update),
+#    - zepta se, jestli chces YOLO rezim (Claude se nepta na kazdou
+#      drobnost) - defaultne ANO, plati pro vsechny sessions.
 #  Bezpecne poustet opakovane (idempotentni).
 # ============================================================
 
@@ -53,12 +55,67 @@ pkg_install() {
     esac
 }
 
+# --- YOLO rezim: zapis do ~/.claude/settings.json -------------
+enable_yolo() {
+    S="$HOME/.claude/settings.json"
+    mkdir -p "$HOME/.claude"
+    if command -v python3 >/dev/null 2>&1; then
+        python3 - "$S" <<'PY' && ok "YOLO rezim zapnut (plati pro vsechny sessions)."
+import json, os, sys
+p = sys.argv[1]
+d = {}
+if os.path.exists(p):
+    try:
+        with open(p) as f:
+            d = json.load(f)
+    except Exception:
+        d = {}
+d.setdefault("permissions", {})["defaultMode"] = "bypassPermissions"
+d["skipDangerousModePermissionPrompt"] = True
+with open(p, "w") as f:
+    json.dump(d, f, indent=2)
+PY
+    elif [ ! -f "$S" ]; then
+        cat > "$S" <<'EOF'
+{
+  "permissions": {
+    "defaultMode": "bypassPermissions"
+  },
+  "skipDangerousModePermissionPrompt": true
+}
+EOF
+        ok "YOLO rezim zapnut (plati pro vsechny sessions)."
+    else
+        warn "Nemam python3 a settings.json uz existuje - YOLO nastav rucne:"
+        warn "  v $S nastav permissions.defaultMode na \"bypassPermissions\"."
+    fi
+}
+
+ask_yolo() {
+    echo ""
+    info "Chces zapnout YOLO rezim?"
+    echo "  YOLO = Claude se nepta na svoleni pro kazdou drobnost (rychlejsi"
+    echo "  prace). Plati pro vsechny sessions. Doporuceno pro zacatek."
+    ans="Y"
+    if [ -r /dev/tty ]; then
+        printf "  Zapnout YOLO? [Y/n]: "
+        read -r ans < /dev/tty || ans="Y"
+        [ -z "$ans" ] && ans="Y"
+    else
+        echo "  (Neinteraktivni beh - zapinam YOLO automaticky.)"
+    fi
+    case "$ans" in
+        [Nn]*) info "YOLO rezim NEzapnuty (Claude se bude ptat na svoleni)." ;;
+        *)     enable_yolo ;;
+    esac
+}
+
 # --- zaklad pro cerstvy OS: doinstaluj, co chybi ---------------
 info "Kontroluji zakladni knihovny (pro jistotu na cerstvem systemu)..."
 NEED=()
 command -v curl  >/dev/null 2>&1 || NEED+=("curl")
 command -v git   >/dev/null 2>&1 || NEED+=("git")
-# python3 pouzije az krok 02 (Teams), ale doinstalujeme rovnou.
+# python3 pouzije az krok 02 (Teams) a YOLO zapis, ale doinstalujeme rovnou.
 command -v python3 >/dev/null 2>&1 || NEED+=("python3")
 # ca-certificates kvuli https (na holem systemu casto chybi)
 if [ "$PKG" = "apt-get" ] || [ "$PKG" = "dnf" ] || [ "$PKG" = "yum" ]; then
@@ -90,6 +147,7 @@ if command -v claude >/dev/null 2>&1; then
     info "Zkousim aktualizaci..."
     if claude update 2>/dev/null; then ok "Aktualizace probehla (nebo uz mas nejnovejsi)."
     else warn "Aktualizaci se nepodarilo spustit automaticky (nevadi, Claude se umi updatovat i sam)."; fi
+    ask_yolo
     echo ""
     info "Spustis ho prikazem:  claude"
     exit 0
@@ -115,6 +173,9 @@ else
     ok "Cesta k programu pridana do $RC"
 fi
 export PATH="$HOME/.local/bin:$HOME/.claude/bin:$PATH"
+
+# --- YOLO rezim ------------------------------------------------
+ask_yolo
 
 # --- overeni --------------------------------------------------
 echo ""
