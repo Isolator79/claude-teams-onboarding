@@ -1,0 +1,226 @@
+#!/usr/bin/env bash
+# tm - interaktivni tmux helper
+# Pouziti: tm          (interaktivni menu)
+#          tm nazev    (pripoji/vytvori session s nazvem)
+
+# POZN: zamerne bez `set -e` - interaktivni menu nesmi spadnout na neplatnem vstupu
+# (spatne cislo session apod.). Chyby se osetruji rucne, ven jen 'q' / Ctrl+C.
+set -uo pipefail
+
+# Barvy
+BOLD='\033[1m'
+DIM='\033[2m'
+CYAN='\033[36m'
+GREEN='\033[32m'
+YELLOW='\033[33m'
+RED='\033[31m'
+RESET='\033[0m'
+
+# Pokud jsme uvnitr tmuxu, pouzijeme switch misto attach
+attach_cmd="attach-session"
+if [[ -n "${TMUX:-}" ]]; then
+    attach_cmd="switch-client"
+fi
+
+# Pripojit/prepnout na session
+do_attach() {
+    local name="$1"
+    if [[ "$attach_cmd" == "switch-client" ]]; then
+        tmux switch-client -t "$name"
+    else
+        tmux attach-session -t "$name"
+    fi
+    # Uspesny attach/switch = konec helperu (po detachi se nevracime do menu).
+    exit 0
+}
+
+# Vytvorit novou session
+do_new() {
+    local name="${1:-}"
+    if [[ -z "$name" ]]; then
+        echo -ne "${CYAN}Nazev session ${DIM}(Enter = auto)${RESET}: "
+        IFS= read -re name
+    fi
+    if [[ -n "$name" ]]; then
+        tmux new-session -d -s "$name" -c "$PWD"
+        echo -e "${GREEN}* Session '${name}' vytvorena${RESET}"
+        do_attach "$name"
+    else
+        if [[ "$attach_cmd" == "switch-client" ]]; then
+            # Uvnitr tmuxu: vytvor a prepni
+            local new_sess
+            new_sess=$(tmux new-session -d -P -c "$PWD" -F '#{session_name}')
+            tmux switch-client -t "$new_sess"
+        else
+            tmux new-session -c "$PWD"
+        fi
+    fi
+}
+
+# Zavrit session
+do_kill() {
+    local sessions
+    sessions=$(tmux list-sessions -F '#{session_name}' 2>/dev/null) || return
+    if [[ -z "$sessions" ]]; then
+        echo -e "${YELLOW}Zadne sessions k zavreni.${RESET}"
+        return
+    fi
+
+    echo ""
+    echo -e "${RED}${BOLD}Zavrit session:${RESET}"
+    local i=1
+    local names=()
+    while IFS= read -r s; do
+        names+=("$s")
+        echo -e "  ${RED}${i})${RESET} ${s}"
+        ((i++))
+    done <<< "$sessions"
+
+    echo -ne "\n${RED}Cislo session (nebo 'a' = vsechny, Enter = zpet)${RESET}: "
+    IFS= read -re choice
+
+    if [[ "$choice" == "a" ]]; then
+        echo -ne "${RED}Opravdu zavrit VSECHNY sessions? [y/N]${RESET}: "
+        IFS= read -re confirm
+        if [[ "$confirm" =~ ^[yYaA]$ ]]; then
+            tmux kill-server 2>/dev/null || true
+            echo -e "${GREEN}* Vsechny sessions zavreny${RESET}"
+        fi
+    elif [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice <= ${#names[@]} )); then
+        local target="${names[$((choice-1))]}"
+        tmux kill-session -t "$target"
+        echo -e "${GREEN}* Session '${target}' zavrena${RESET}"
+    fi
+}
+
+# Prejmenovat session
+do_rename() {
+    local sessions
+    sessions=$(tmux list-sessions -F '#{session_name}' 2>/dev/null) || return
+    if [[ -z "$sessions" ]]; then
+        echo -e "${YELLOW}Zadne sessions k prejmenovani.${RESET}"
+        return
+    fi
+
+    echo ""
+    echo -e "${CYAN}${BOLD}Prejmenovat session:${RESET}"
+    local i=1
+    local names=()
+    while IFS= read -r s; do
+        names+=("$s")
+        echo -e "  ${CYAN}${i})${RESET} ${s}"
+        ((i++))
+    done <<< "$sessions"
+
+    echo -ne "\n${CYAN}Cislo session (Enter = zpet)${RESET}: "
+    IFS= read -re choice
+
+    if [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice <= ${#names[@]} )); then
+        local target="${names[$((choice-1))]}"
+        echo -ne "${CYAN}Novy nazev pro '${target}'${RESET}: "
+        IFS= read -re newname
+        if [[ -n "$newname" ]]; then
+            tmux rename-session -t "$target" "$newname"
+            echo -e "${GREEN}* '${target}' -> '${newname}'${RESET}"
+        fi
+    fi
+}
+
+# Zobrazit sessions a menu
+show_menu() {
+    local sessions
+    sessions=$(tmux list-sessions -F '#{session_name}|#{session_windows}|#{session_attached}|#{session_created}' 2>/dev/null) || sessions=""
+
+    echo ""
+    echo -e "${BOLD}=== TMUX ===${RESET}"
+    echo ""
+
+    if [[ -z "$sessions" ]]; then
+        echo -e "  ${DIM}Zadne aktivni sessions${RESET}"
+        echo ""
+        echo -e "  ${GREEN}n${RESET} Nova session    ${DIM}q${RESET} Konec"
+        echo ""
+        echo -ne "${BOLD}> ${RESET}"
+        IFS= read -re choice
+
+        case "$choice" in
+            n|N) do_new ;;
+            q|Q|"") exit 0 ;;
+            *) do_new "$choice" ;;  # cokoliv jineho = nazev nove session
+        esac
+        return
+    fi
+
+    local i=1
+    local names=()
+    while IFS='|' read -r name windows attached created; do
+        names+=("$name")
+        local status=""
+        if [[ "$attached" -gt 0 ]]; then
+            status="${GREEN}* attached${RESET}"
+        else
+            status="${DIM}-${RESET}"
+        fi
+        local win_label="oken"
+        [[ "$windows" -eq 1 ]] && win_label="okno"
+        [[ "$windows" -ge 2 && "$windows" -le 4 ]] && win_label="okna"
+
+        echo -e "  ${CYAN}${BOLD}${i})${RESET} ${BOLD}${name}${RESET}  ${DIM}${windows} ${win_label}${RESET}  ${status}"
+        ((i++))
+    done <<< "$sessions"
+
+    echo ""
+    echo -e "  ${GREEN}n${RESET} Nova   ${YELLOW}d${RESET} Zavrit   ${CYAN}r${RESET} Prejmenovat   ${DIM}q${RESET} Konec"
+    echo ""
+    echo -ne "${BOLD}> ${RESET}"
+    IFS= read -re choice
+
+    case "$choice" in
+        n|N) do_new ;;
+        d|D) do_kill ;;
+        r|R) do_rename ;;
+        q|Q|"") exit 0 ;;
+        *)
+            if [[ "$choice" =~ ^[0-9]+$ ]]; then
+                # Ciselna volba: musi byt v rozsahu, jinak jen chyba + prekresleni menu
+                if (( choice >= 1 && choice <= ${#names[@]} )); then
+                    do_attach "${names[$((choice-1))]}"
+                else
+                    echo -e "${RED}Neplatne cislo session - zkus to znovu.${RESET}"
+                fi
+            elif tmux has-session -t "$choice" 2>/dev/null; then
+                do_attach "$choice"
+            else
+                # Nenumericky a neexistujici nazev = nova session
+                echo -e "${DIM}Session '${choice}' neexistuje, vytvarim...${RESET}"
+                do_new "$choice"
+            fi
+            ;;
+    esac
+}
+
+# -- Main --
+
+# Kontrola tmux
+if ! command -v tmux &>/dev/null; then
+    echo -e "${RED}tmux neni nainstalovany!${RESET}"
+    exit 1
+fi
+
+# Primy argument = rychly rezim
+if [[ $# -ge 1 ]]; then
+    name="$1"
+    if tmux has-session -t "$name" 2>/dev/null; then
+        do_attach "$name"
+    else
+        do_new "$name"
+    fi
+    exit 0
+fi
+
+# Bez argumentu = interaktivni menu (smycka).
+# Neplatna volba menu NEvyhodi ven - prekresli se. Konec jen 'q' nebo Ctrl+C.
+# Uspesny attach/switch ukonci helper pres `exit 0` uvnitr do_attach.
+while true; do
+    show_menu
+done

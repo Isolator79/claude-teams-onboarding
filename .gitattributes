@@ -7,6 +7,9 @@
 *.py        text eol=lf
 *.md        text eol=lf
 
+# Skripty bez pripony (musi mit LF).
+tm/tm       text eol=lf
+
 # Windows davky nenormalizovat - drzime presne tak, jak jsou ulozene (CRLF).
 *.cmd       -text
 *.bat       -text

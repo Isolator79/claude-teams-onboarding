@@ -144,7 +144,25 @@ nabehne i po restartu serveru). Pak uz jen pises botovi v Telegramu.
 
 ---
 
+## Krok 04 - TM (snadne prepinani tmux sessions)
+
+`TM` je maly pomocnik na **tmux** - rucni spousteni a prepinani sessions na
+serveru (alternativa/doplnek ke sluzbe na pozadi). Po instalaci napises odkudkoliv
+`tm` (nebo `TM`) a dostanes interaktivni menu: nova session, pripojeni,
+zavreni, prejmenovani.
+
+### Mac / Linux
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Isolator79/claude-teams-onboarding/main/tm/04-tm.sh | bash
+```
+
+Skript doinstaluje tmux (pokud chybi), nakopiruje `tm` do `~/.local/bin`
+(vc. variant `TM`/`tM`/`Tm`, aby fungoval at ho napises jakkoliv) a zajisti,
+ze je v PATH. Pak zavri okno, otevri nove a napis `tm`.
+
+---
+
 ## Co bude dal
 
-- **tmux** - rucni spousteni na serveru (alternativa ke sluzbe na pozadi).
-  Dostanes samostatne.
+- Dalsi kroky podle potreby (napr. spolecny rozcestnik `menu`).
