@@ -106,6 +106,10 @@ def setup():
     print("  2) Zvol jmeno a username bota")
     print("  3) BotFather ti vypise TOKEN (neco jako 123456789:ABC...)")
     print("")
+    print("POZOR: pokud uz nejakeho Telegram bota mas a pouzivas ho jinde,")
+    print("vytvor si pro tohle NOVEHO bota (vlastni token). Dva ruzne programy")
+    print("nemohou cist zpravy stejneho bota najednou - tlouklo by se to.")
+    print("")
     token = sys.argv[2].strip() if len(sys.argv) > 2 else ""
     if not token:
         try:
@@ -126,8 +130,30 @@ def setup():
         print("[CHYBA] Token nefunguje:", me)
         sys.exit(1)
     uname = me["result"].get("username", "?")
-    print("[OK] Bot funguje: @%s" % uname)
+    curname = me["result"].get("first_name", "") or uname
+    print("[OK] Bot funguje: @%s (zobrazuje se jako: %s)" % (uname, curname))
     print("")
+
+    # Volitelne: pod jakym jmenem se bot zobrazuje v Telegramu (Bot API setMyName).
+    # Hodi se, kdyz uz mas jineho bota a chces je od sebe rozlisit.
+    newname = sys.argv[3].strip() if len(sys.argv) > 3 else None
+    if newname is None:
+        try:
+            with open("/dev/tty") as tty:
+                sys.stdout.write("Pod jakym jmenem se ma bot zobrazovat? "
+                                 "(Enter = nechat '%s'): " % curname)
+                sys.stdout.flush()
+                newname = (tty.readline() or "").strip()
+        except Exception:
+            newname = ""
+    if newname:
+        st2, r2 = tg("setMyName", {"name": newname})
+        if st2 == 200 and r2.get("ok"):
+            print("[OK] Jmeno bota nastaveno na: %s" % newname)
+        else:
+            print("[POZOR] Jmeno se nepodarilo zmenit (stav %s): %s" % (st2, r2))
+        print("")
+
     print("Ted otevri Telegram, najdi sveho bota  @%s  a napis mu cokoliv" % uname)
     print("(napr. /start nebo 'ahoj'). Cekam na tvou prvni zpravu...")
 

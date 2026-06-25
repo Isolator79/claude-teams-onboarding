@@ -126,6 +126,11 @@ session** nez Teams - klidne muzes mit oboji zaroven.
 Co budes potrebovat: **token bota** od **@BotFather** (skript te tim provede -
 v Telegramu napises @BotFather `/newbot`, das jmeno a dostanes token).
 
+> Uz nejakeho Telegram bota pouzivas jinde? Vytvor si pro tohle **noveho**
+> bota (vlastni token) - dva programy nemohou cist stejneho bota najednou,
+> tlouklo by se to. Skript se te pri nastaveni zepta, **pod jakym jmenem**
+> se ma bot v Telegramu zobrazovat (at je odlisis).
+
 ### Mac / Linux
 
 ```bash
