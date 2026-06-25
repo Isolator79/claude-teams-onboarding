@@ -5,6 +5,7 @@ state.json
 devicecode.json
 telegram_token.json
 telegram_state.json
+telegram/inbox/
 *.log
 __pycache__/
 *.pyc

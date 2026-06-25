@@ -21,6 +21,7 @@ import urllib.request, urllib.parse, urllib.error
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOKENS = os.path.join(HERE, "telegram_token.json")   # bot token (gitignored)
 STATE  = os.path.join(HERE, "telegram_state.json")   # chat_id, offset, session (gitignored)
+INBOX  = os.path.join(HERE, "inbox")                 # sem se ukladaji prichozi soubory (gitignored)
 
 POLL_TIMEOUT = 25   # long-polling: jak dlouho Telegram drzi spojeni a ceka na zpravu
 
@@ -116,6 +117,85 @@ def _chunks(s, n):
     if len(s) <= n:
         return [s]
     return [s[i:i + n] for i in range(0, len(s), n)]
+
+
+# ---------- prichozi soubory (download z Telegramu) ---------------------
+
+def _safe_name(name):
+    """Ocisti nazev souboru - jen bezpecne znaky, zadne lomitka ani '..'."""
+    name = os.path.basename(name or "").strip()
+    out = "".join(c if (c.isalnum() or c in "._- ") else "_" for c in name)
+    out = out.strip(". ") or "soubor"
+    return out[:120]
+
+
+def _attachment(msg):
+    """Najde v prichozi zprave prilohu. Vraci (file_id, navrhovany_nazev, popis)
+    nebo None, kdyz zadna priloha neni."""
+    # dokument (libovolny soubor s puvodnim nazvem)
+    doc = msg.get("document")
+    if doc:
+        return doc["file_id"], doc.get("file_name") or "dokument", "soubor"
+    # fotka - pole velikosti, bereme nejvetsi (posledni)
+    photos = msg.get("photo")
+    if photos:
+        return photos[-1]["file_id"], "foto.jpg", "fotka"
+    # hlasova zprava
+    voice = msg.get("voice")
+    if voice:
+        return voice["file_id"], "hlasovka.ogg", "hlasova zprava"
+    # audio soubor
+    audio = msg.get("audio")
+    if audio:
+        return audio["file_id"], audio.get("file_name") or "audio.mp3", "audio"
+    # video
+    video = msg.get("video")
+    if video:
+        return video["file_id"], video.get("file_name") or "video.mp4", "video"
+    # video-zprava (kolecko)
+    vn = msg.get("video_note")
+    if vn:
+        return vn["file_id"], "videozprava.mp4", "videozprava"
+    return None
+
+
+def download_attachment(file_id, suggested_name):
+    """Stahne soubor z Telegramu do INBOX/. Vraci absolutni cestu nebo None.
+    Bot API umi stahnout soubory do ~20 MB."""
+    st, d = tg("getFile", {"file_id": file_id})
+    if st != 200 or not d.get("ok"):
+        return None, "Telegram nevratil cestu k souboru (stav %s)." % st
+    file_path = (d.get("result") or {}).get("file_path")
+    if not file_path:
+        return None, "Telegram nevratil cestu k souboru."
+
+    # cilovy nazev: cas + navrzene jmeno (aby se nic neprepisovalo)
+    os.makedirs(INBOX, exist_ok=True)
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    base = _safe_name(suggested_name)
+    # kdyz navrzene jmeno nema priponu, vezmeme ji z Telegram file_path
+    if "." not in base:
+        ext = os.path.splitext(file_path)[1]
+        if ext:
+            base += ext
+    dest = os.path.join(INBOX, "%s_%s" % (stamp, base))
+
+    url = "https://api.telegram.org/file/bot%s/%s" % (_token(), file_path)
+    try:
+        req = urllib.request.Request(url, method="GET")
+        with urllib.request.urlopen(req, timeout=120) as r, open(dest, "wb") as f:
+            while True:
+                buf = r.read(65536)
+                if not buf:
+                    break
+                f.write(buf)
+    except Exception as e:
+        return None, "Stazeni selhalo: %s" % e
+    try:
+        os.chmod(dest, 0o600)
+    except Exception:
+        pass
+    return dest, None
 
 
 # ---------- nastaveni (token + sparovani s chatem) ----------------------
@@ -325,6 +405,36 @@ def run():
                     if str((msg.get("chat") or {}).get("id")) != str(chat_id):
                         continue
                     text = (msg.get("text") or "").strip()
+                    # caption = popisek pripojeny k souboru/fotce
+                    caption = (msg.get("caption") or "").strip()
+
+                    # prichozi soubor? stahnout do INBOX a predat cestu Claudovi
+                    att = _attachment(msg)
+                    if att:
+                        file_id, sug_name, kind = att
+                        send(chat_id, "Stahuji %s..." % kind)
+                        dest, err = download_attachment(file_id, sug_name)
+                        if not dest:
+                            send(chat_id, "[Soubor se nepodarilo stahnout: %s]" % err)
+                            continue
+                        send(chat_id, "Ulozeno: %s" % dest)
+                        print("[ty] (soubor)", dest)
+                        instr = ("Uzivatel mi poslal pres Telegram soubor (%s). "
+                                 "Je ulozeny na serveru zde: %s" % (kind, dest))
+                        if caption:
+                            instr += "\nPopisek od uzivatele: %s" % caption
+                        else:
+                            instr += ("\nNeni zadny dalsi pokyn - kratce se podivej co to je "
+                                      "(napr. velikost/typ, u textu/obrazku obsah) a zepi se, "
+                                      "co s tim mam udelat.")
+                        send(chat_id, "Pracuji na tom...")
+                        ask_claude_stream(instr, session_id, first, chat_id)
+                        first = False
+                        state["session_started"] = True
+                        _save(STATE, state)
+                        print("[claude] (prubeh i odpoved odeslany do Telegramu)")
+                        continue
+
                     if not text:
                         continue
                     print("[ty]", text)
