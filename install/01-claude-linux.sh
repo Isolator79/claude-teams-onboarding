@@ -249,7 +249,7 @@ if [ "$(id -u)" -eq 0 ]; then
     # Rovnou prepnout na noveho uzivatele (login shell -> nactena cesta,
     # claude hned funguje). Pri odhlaseni (exit) se vratis do rootu.
     if [ -e /dev/tty ]; then
-        info "Prepinam te na uzivatele '$NEWUSER'. (Odchod: napis  exit)"
+        info "Prepinam te na uzivatele '$NEWUSER'."
         echo ""
         exec su - "$NEWUSER" < /dev/tty
     fi
