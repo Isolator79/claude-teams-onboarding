@@ -9,9 +9,10 @@
 #       pro pozdejsi napojeni na Teams),
 #    - nainstaluje program "claude" (Claude Code), nebo kdyz uz je,
 #      zkusi ho aktualizovat (update),
-#    - zepta se, jestli chces YOLO rezim (Claude se nepta na kazdou
-#      drobnost) - defaultne ANO, plati pro vsechny sessions.
-#  Bezpecne poustet opakovane (idempotentni).
+#    - zapne YOLO rezim NAPEVNO (Claude se nepta na kazdou drobnost)
+#      + RemoteControl - plati pro vsechny sessions.
+#  Bezpecne poustet opakovane (idempotentni). Bezi i neinteraktivne
+#  (curl ... | bash) - na nic se nepta.
 # ============================================================
 
 set -uo pipefail
@@ -58,7 +59,7 @@ pkg_install() {
 # --- seed ~/.claude/settings.json -----------------------------
 #  RemoteControl (remoteControlAtStartup) zapiname VZDY = ovladani
 #  z aplikace Claude v kazde session, bez ptani.
-#  YOLO (bypassPermissions) jen kdyz si ho user zvoli (param $1 = 1).
+#  YOLO (bypassPermissions) zapiname napevno (param $1 = 1).
 seed_settings() {
     YOLO="${1:-0}"
     S="$HOME/.claude/settings.json"
@@ -110,24 +111,13 @@ EOF
     fi
 }
 
-ask_yolo() {
+enable_yolo() {
     echo ""
-    info "Chces zapnout YOLO rezim?"
+    info "Zapinam YOLO rezim (napevno) + RemoteControl."
     echo "  YOLO = Claude se nepta na svoleni pro kazdou drobnost (rychlejsi"
-    echo "  prace). Plati pro vsechny sessions. Doporuceno pro zacatek."
-    ans="Y"
-    if [ -r /dev/tty ]; then
-        printf "  Zapnout YOLO? [Y/n]: "
-        read -r ans < /dev/tty || ans="Y"
-        [ -z "$ans" ] && ans="Y"
-    else
-        echo "  (Neinteraktivni beh - zapinam YOLO automaticky.)"
-    fi
-    case "$ans" in
-        [Nn]*) info "YOLO rezim NEzapnuty (Claude se bude ptat na svoleni)."
-               seed_settings 0 ;;
-        *)     seed_settings 1 ;;
-    esac
+    echo "  prace). RemoteControl = ovladani session z aplikace Claude."
+    echo "  Plati pro vsechny sessions."
+    seed_settings 1
 }
 
 # --- zaklad pro cerstvy OS: doinstaluj, co chybi ---------------
@@ -167,7 +157,7 @@ if command -v claude >/dev/null 2>&1; then
     info "Zkousim aktualizaci..."
     if claude update 2>/dev/null; then ok "Aktualizace probehla (nebo uz mas nejnovejsi)."
     else warn "Aktualizaci se nepodarilo spustit automaticky (nevadi, Claude se umi updatovat i sam)."; fi
-    ask_yolo
+    enable_yolo
     echo ""
     info "Spustis ho prikazem:  claude"
     exit 0
@@ -195,7 +185,7 @@ fi
 export PATH="$HOME/.local/bin:$HOME/.claude/bin:$PATH"
 
 # --- YOLO rezim ------------------------------------------------
-ask_yolo
+enable_yolo
 
 # --- overeni --------------------------------------------------
 echo ""
