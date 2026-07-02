@@ -159,10 +159,6 @@ enable_yolo() {
 #  sudo heslo) a Claude nainstaluj uz jako novy uzivatel.
 # ============================================================
 if [ "$(id -u)" -eq 0 ]; then
-    warn "Bezis jako ROOT. Claude v YOLO rezimu pod rootem NEpobezi (bezpecnostni pojistka)."
-    info "Zaloznim ti bezneho uzivatele a Claude nainstaluji rovnou jako on."
-    echo ""
-
     # base knihovny jako root (bez sudo) - aby je pozdejsi beh usera uz nemusel resit
     install_base_libs
     if ! command -v curl >/dev/null 2>&1; then

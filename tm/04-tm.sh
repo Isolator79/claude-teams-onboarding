@@ -104,6 +104,37 @@ else
 fi
 export PATH="$HOME/.local/bin:$PATH"
 
+# --- paticka (tmux status bar): nazev serveru + IP + cas -------
+# Genericke, bere hostname automaticky pres #H (zadny natvrdo zapsany nazev).
+# Zapisuje se jako spravovany blok do ~/.tmux.conf (idempotentne).
+TMUXCONF="$HOME/.tmux.conf"
+MARK_A="# >>> TM paticka (spravovano skriptem, needituj rucne) >>>"
+MARK_B="# <<< TM paticka <<<"
+read -r -d '' TM_FOOTER <<'EOF'
+set -g status on
+set -g status-interval 5
+set -g status-bg colour235
+set -g status-fg white
+set -g status-justify centre
+set -g status-left "#[bg=colour33,fg=white,bold] #S #[bg=colour235] "
+set -g status-left-length 30
+set -g status-right-length 80
+set -g status-right "#[bg=colour33,fg=white,bold] #H #[bg=colour237,fg=white] #(hostname -I 2>/dev/null | awk '{print $1}') #[bg=colour235] %H:%M "
+setw -g window-status-format " #I:#W "
+setw -g window-status-current-format " #I:#W "
+setw -g window-status-current-style "bg=colour33,fg=white,bold"
+EOF
+# odstran stary spravovany blok (idempotence), pak pridej cerstvy
+if [ -f "$TMUXCONF" ] && grep -qF "$MARK_A" "$TMUXCONF"; then
+    cp "$TMUXCONF" "$TMUXCONF.bak.$$" 2>/dev/null
+    sed -i.tmpbak "/^$(printf '%s' "$MARK_A" | sed 's/[][\.*^$/]/\\&/g')$/,/^$(printf '%s' "$MARK_B" | sed 's/[][\.*^$/]/\\&/g')$/d" "$TMUXCONF" 2>/dev/null
+    rm -f "$TMUXCONF.tmpbak"
+fi
+{ printf '\n%s\n%s\n%s\n' "$MARK_A" "$TM_FOOTER" "$MARK_B"; } >> "$TMUXCONF"
+ok "Paticka nastavena (nazev serveru + IP + cas) do $TMUXCONF."
+# kdyz uz tmux bezi, nacti hned at je paticka videt
+tmux source-file "$TMUXCONF" >/dev/null 2>&1 || true
+
 # --- overeni ---------------------------------------------------
 echo ""
 if command -v tm >/dev/null 2>&1; then
