@@ -3,6 +3,25 @@ chcp 65001 >nul 2>&1
 setlocal enableextensions
 title Instalace Claude Code + nastroje (Windows)
 
+REM --- self-elevace na spravce (winget muze pri instalaci potrebovat) ---
+REM  Kdyz uz jsme jako spravce, pokracujeme. Jinak se pres UAC znovu
+REM  spustime s pravy spravce (jeden dialog na zacatku). Bez PowerShellu.
+net session >nul 2>&1
+if %errorlevel% neq 0 goto ELEVATE
+goto ADMIN_OK
+
+:ELEVATE
+echo.
+echo Ziskavam prava spravce - potvrd prosim dialog Rizeni uzivatelskych uctu (UAC)...
+set "_VBS=%TEMP%\claude_elevate.vbs"
+> "%_VBS%" echo Set U = CreateObject("Shell.Application")
+>> "%_VBS%" echo U.ShellExecute "%~f0", "", "", "runas", 1
+cscript //nologo "%_VBS%" >nul 2>&1
+del "%_VBS%" >nul 2>&1
+exit /b
+
+:ADMIN_OK
+
 REM ============================================================
 REM   Claude Code + nastroje - instalace na Windows (cisty .cmd)
 REM ------------------------------------------------------------
