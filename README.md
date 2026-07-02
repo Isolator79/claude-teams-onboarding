@@ -21,20 +21,20 @@ Vyber si podle toho, na cem to chces provozovat:
 
 ### Windows
 
-Stiskni klavesu **Windows**, napis `powershell`, otevri **Windows PowerShell**
-a vloz tento prikaz (Enter):
+Stiskni klavesu **Windows**, napis `cmd`, otevri **Prikazovy radek** a vloz
+tento prikaz (Enter):
 
 ```
-irm https://raw.githubusercontent.com/Isolator79/claude-teams-onboarding/main/install/01-claude-windows.ps1 | iex
+curl -fsSL -o "%TEMP%\claude.cmd" https://raw.githubusercontent.com/Isolator79/claude-teams-onboarding/main/install/01-claude-windows.cmd && "%TEMP%\claude.cmd"
 ```
 
-> Funguje i na starsich/zakladnich Windows. Kdyz neni winget, pouzije se
-> nahradni zpusob automaticky.
->
-> Komu se nechce nic psat: stahni [`install/01-claude-windows.cmd`](install/01-claude-windows.cmd)
-> (na strance souboru **Raw** -> uloz) a dvojklik. Dela presne to same a
-> taky si vzdy stahne aktualni verzi. Kdyby Windows hlasil "Windows ochranil
-> pocitac", klikni **Dalsi informace** -> **Presto spustit**.
+Stahne a spusti instalator. Pokud je potreba, sam si vyzada **prava spravce**
+(vyskoci okenko - potvrd **Ano**). Nic dalsiho neresis.
+
+> ⚠️ **Musi to byt Prikazovy radek (cmd), NE PowerShell.** Kdyz radek zacina
+> `PS C:\...>`, jsi v PowerShellu - zavri okno a otevri `cmd` (jak je popsano
+> vyse). V PowerShellu prikaz nefunguje (`%TEMP%` se nenahradi -> `curl: (23)
+> ERROR on write`).
 
 ### Mac (macOS)
 
