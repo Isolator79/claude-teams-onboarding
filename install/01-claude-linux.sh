@@ -27,6 +27,25 @@ echo ""
 info "=== Instalace Claude Code (Linux) ==="
 echo ""
 
+# --- Claude nepobezi jako root (bezpecnostni pojistka Claude Code) ------
+#  V YOLO rezimu (--dangerously-skip-permissions) Claude Code ODMITA bezet
+#  pod rootem. Na cerstvem serveru jsi prihlaseny jako root -> vytvor si
+#  bezneho uzivatele a spust to jako on.
+if [ "$(id -u)" -eq 0 ]; then
+    warn "Bezis jako ROOT. Claude v YOLO rezimu pod rootem NEpobezi (bezpecnostni pojistka)."
+    echo ""
+    info "Vytvor si bezneho uzivatele a spust instalaci jako on:"
+    echo ""
+    echo "    adduser --gecos \"\" claude       # vytvori uzivatele (zepta se na heslo)"
+    echo "    usermod -aG sudo claude          # da mu prava spravce (sudo)"
+    echo "    su - claude                      # prepni se na nej"
+    echo ""
+    echo "  a pak spust znovu tento prikaz (uz jako 'claude'):"
+    echo "    curl -fsSL https://raw.githubusercontent.com/Isolator79/claude-teams-onboarding/main/install/01-claude-linux.sh | bash"
+    echo ""
+    exit 1
+fi
+
 # Installer obvykle uklada do ~/.local/bin - pridame do PATH pro tento beh.
 export PATH="$HOME/.local/bin:$HOME/.claude/bin:$PATH"
 
@@ -46,7 +65,7 @@ pkg_install() {
     # pkg_install <balicky...> - nainstaluje pres dostupny spravce balicku
     [ "$#" -eq 0 ] && return 0
     case "$PKG" in
-        apt-get) $SUDO apt-get update -qq && $SUDO DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "$@" ;;
+        apt-get) $SUDO apt-get update -qq && $SUDO env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "$@" ;;
         dnf)     $SUDO dnf install -y "$@" ;;
         yum)     $SUDO yum install -y "$@" ;;
         pacman)  $SUDO pacman -Sy --noconfirm "$@" ;;
