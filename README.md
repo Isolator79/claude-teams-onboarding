@@ -70,50 +70,37 @@ prohlizece, prihlas se a potvrd. Pak uz si muzes s Claude psat.
 
 ---
 
-## Krok 02 - Pripoj Claude k Teams
+## Krok M365 - Pripoj Claude k Microsoft 365
 
-Aby sis s Claude mohl psat primo ve svem **Teams** (podobne jako pres
-Telegram). V Teams ti vznikne skupinovy chat **"Claude"** (jen ty v nem).
-Co tam napises, Claude precte a odpovi ti primo do chatu.
+Aby Claude umel pracovat s tvym **Microsoft 365** - mailem, kalendarem,
+soubory na OneDrive/SharePointu a **cist tve Teams chaty**. Pak mu staci
+napsat (v terminalu nebo pres Telegram) *"podivej se mi do mailu"* nebo
+*"co mam dnes v kalendari"* a on to udela.
+
+> Jen pro **selfhosted server** (Linux/macOS), kde Claude bezi. Na Windows
+> se nic z Microsoftu neinstaluje.
 
 **Dulezite - dva ruzne ucty se nepletou:**
 
 - Ucet, na kterem bezi **Claude** (krok 01), muze byt jakykoliv
-  (klidne placena verze na Gmailu). S Teams nema nic spolecneho.
-- Tady v kroku 02 se prihlasujes do sveho **pracovniho uctu na Teams**,
-  tedy **tvuj-email@bidli.cz**. Vsichni u nas maji Teams na bidli.cz.
+  (klidne placena verze na Gmailu). S Microsoftem nema nic spolecneho.
+- Tady se prihlasujes do sveho **pracovniho uctu Microsoft 365**,
+  tedy **tvuj-email@bidli.cz**.
 
 Prikaz si sam doinstaluje co potrebuje (git, Python) a stahne se do slozky
 `claude-teams-onboarding` v tvem domovskem adresari. Pri opakovanem spusteni
 se aktualizuje. Prihlaseni se pamatuje - podruhe uz kod nezadavas.
 
-### Mac / Linux
-
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Isolator79/claude-teams-onboarding/main/teams/02-teams.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Isolator79/claude-teams-onboarding/main/m365/03-m365.sh | bash
 ```
 
-### Windows
+Pri prvnim spusteni zkopiruj vypsanou **adresu + kod do prohlizece** a
+prihlas se uctem bidli.cz. Skript pak rekne Claudovi (pres `~/.claude/CLAUDE.md`),
+ze umi tvuj M365 ovladat - od te chvile mu staci napsat, co chces.
 
-Ve **Windows PowerShell**:
-
-```
-irm https://raw.githubusercontent.com/Isolator79/claude-teams-onboarding/main/teams/02-teams.ps1 | iex
-```
-
-> Nebo dvojklik na stazeny [`teams/02-teams.cmd`](teams/02-teams.cmd).
-
-Pri prvnim spusteni zkopiruj vypsanou **adresu do prohlizece**, zadej
-**kod** a prihlas se uctem bidli.cz. Pak uz si pis s Claude v Teams.
-
-Most se rovnou nainstaluje jako **sluzba na pozadi** - bezi nonstop a
-nabehne sam i po restartu serveru, takze okno muzes zavrit. V Teams uvidis
-i **prubeh prace** (jako ziva session), ne jen finalni odpoved. A kdyz
-poprosis, Claude ti **koukne i do mailu, kalendare nebo na OneDrive**
-(pouziva stejne prihlaseni).
-
-> Sprava sluzby: `systemctl --user status claude-teams` (stav),
-> `systemctl --user stop claude-teams` (zastav), `... start ...` (spust).
+> Prihlaseni plati dlouhodobe (token se sam obnovuje). Znovu prihlasit:
+> `cd ~/claude-teams-onboarding/m365 && python3 m365_auth.py login`.
 
 ---
 

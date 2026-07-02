@@ -3,11 +3,11 @@
 # ============================================================
 #  graph.py - tenky klient na Microsoft Graph (M365) pro Claude.
 # ------------------------------------------------------------
-#  Pouziva STEJNE prihlaseni (tokens.json) jako most do Teams,
-#  takze kdyz uz jsi prihlaseny pres KROK 02, funguje to hned -
-#  zadne dalsi prihlasovani.
+#  Prihlaseni (tokens.json) resi m365_auth.py. Kdyz uz jsi
+#  prihlaseny (KROK M365 login), funguje to hned - bez dalsiho
+#  prihlasovani.
 #
-#  Claude tenhle nastroj vola SAM, kdyz ho o neco poprosis v Teams
+#  Claude tenhle nastroj vola SAM, kdyz ho o neco poprosis
 #  ("podivej se mi do mailu", "co mam dnes v kalendari", ...).
 #
 #  Pouziti z prikazove radky:
@@ -15,17 +15,17 @@
 #    python3 graph.py mail [N]                 - poslednich N mailu
 #    python3 graph.py send-mail <komu> <predmet> <text>
 #    python3 graph.py calendar [N]             - nadchazejici udalosti
-#    python3 graph.py chats [N]                - tve Teams chaty
-#    python3 graph.py messages <chatId> [N]    - zpravy z chatu
+#    python3 graph.py chats [N]                - tve Teams chaty (cteni)
+#    python3 graph.py messages <chatId> [N]    - zpravy z chatu (cteni)
 #    python3 graph.py files [cesta]            - OneDrive (vychozi koren)
 #  Obecne volani Graphu (cokoliv dalsiho):
 #    python3 graph.py GET  "/me/messages?$top=5&$select=subject,from"
-#    python3 graph.py POST /chats/<id>/messages '{"body":{"content":"ahoj"}}'
+#    python3 graph.py POST /me/sendMail '{...}'
 #    (metody: GET POST PATCH PUT DELETE; 3. argument = telo jako JSON)
 # ============================================================
 
 import sys, json
-import claude_teams as ct
+import m365_auth as ct
 
 USAGE = __doc__
 
