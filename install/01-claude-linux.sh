@@ -242,11 +242,17 @@ if [ "$(id -u)" -eq 0 ]; then
     echo ""
     echo "  SSH:     ssh $NEWUSER@<IP-serveru>"
     echo "  WinSCP:  host = IP serveru, uzivatel = $NEWUSER, heslo = ktere jsi ted zadal"
-    echo "  Claude:  prihlas se jako $NEWUSER a napis:  claude"
-    echo ""
-    echo "  Prepnout se na nej hned muzes prikazem:   su - $NEWUSER"
+    echo "  Claude:  napis  claude  (uz jsi prepnuty na $NEWUSER)"
     echo "======================================="
     echo ""
+
+    # Rovnou prepnout na noveho uzivatele (login shell -> nactena cesta,
+    # claude hned funguje). Pri odhlaseni (exit) se vratis do rootu.
+    if [ -e /dev/tty ]; then
+        info "Prepinam te na uzivatele '$NEWUSER'. (Odchod: napis  exit)"
+        echo ""
+        exec su - "$NEWUSER" < /dev/tty
+    fi
     exit 0
 fi
 
