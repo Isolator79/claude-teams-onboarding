@@ -155,6 +155,35 @@ ze je v PATH. Pak zavri okno, otevri nove a napis `tm`.
 
 ---
 
+## Krok 05 - Nainstaluj si skilly (beginner + project)
+
+**Skilly** = hotove "rezimy", ktere v Claude vyvolas napsanim `/nazev`.
+Pridavame dva jednoduche:
+
+- **`/beginner`** - systematizace za tebe: Claude sam pozna tema, zalozi slozku,
+  uklada kratka shrnuti a priste navaze. Nemusis resit zadne soubory.
+- **`/project`** - na velky ukol pusti vic pomocniku najednou a jeden vysledek
+  zkontroluje (rychleji a bez halucinaci).
+
+### Mac / Linux
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Isolator79/claude-teams-onboarding/main/skills/05-skills.sh | bash
+```
+
+### Windows
+
+Do **Prikazoveho radku (cmd)** vloz:
+
+```
+curl -fsSL -o "%TEMP%\skills.cmd" https://raw.githubusercontent.com/Isolator79/claude-teams-onboarding/main/skills/05-skills.cmd && "%TEMP%\skills.cmd"
+```
+
+Nakopiruje skilly do `~/.claude/skills/`. Pak Claude zavri a spust znovu -
+napsanim `/beginner` nebo `/project` je vyvolas.
+
+---
+
 ## Co bude dal
 
 - Dalsi kroky podle potreby (napr. spolecny rozcestnik `menu`).
