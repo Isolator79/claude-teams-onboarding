@@ -43,7 +43,9 @@ done
 pkg_install() {
     [ "$#" -eq 0 ] && return 0
     case "$PKG" in
-        apt-get) $SUDO apt-get update -qq && $SUDO DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "$@" ;;
+        # POZOR: "$SUDO env VAR=val" (ne "$SUDO VAR=val") - sudo by jinak bralo
+        # DEBIAN_FRONTEND=... jako nazev prikazu -> "command not found".
+        apt-get) $SUDO apt-get update -qq && $SUDO env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "$@" ;;
         dnf)     $SUDO dnf install -y "$@" ;;
         yum)     $SUDO yum install -y "$@" ;;
         pacman)  $SUDO pacman -Sy --noconfirm "$@" ;;
